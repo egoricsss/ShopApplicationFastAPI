@@ -9,12 +9,15 @@ from app.db_depends import get_db
 router = APIRouter(prefix="/products", tags=["products"])
 
 
-@router.get("/")
-async def get_all_products():
-    """
-    Возвращает список всех товаров.
-    """
-    return {"message": "Список всех товаров (заглушка)"}
+@router.get("/", response_model=list[ProductSchema])
+async def get_all_products(session: AsyncSession = Depends(get_db)):
+    stmt = (
+        select(ProductModel)
+        .where(ProductModel.is_active == True)
+        .order_by(ProductModel.id.desc())
+    )
+    result = await session.scalars(stmt)
+    return result.all()
 
 
 @router.post("/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
@@ -25,11 +28,11 @@ async def create_product(
     Создаёт новый товар.
     """
     # check category id
-    stmt = select(CategoryModel).where(CategoryModel.id == product_payload.id).limit(1)
+    stmt = select(CategoryModel).where(CategoryModel.id == product_payload.category_id).limit(1)
     category = await session.scalar(stmt)
     if category is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Category not found"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Category not found"
         )
 
     db_product = ProductModel(**product_payload.model_dump())
@@ -56,7 +59,7 @@ async def get_products_by_category(
     return result.all()
 
 
-@router.get("/{product_id}", response_model=ProductModel)
+@router.get("/{product_id}", response_model=ProductSchema)
 async def get_product(product_id: int, session: AsyncSession = Depends(get_db)):
     """
     Возвращает детальную информацию о товаре по его ID.
@@ -66,7 +69,7 @@ async def get_product(product_id: int, session: AsyncSession = Depends(get_db)):
     if db_product is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Product with suc ID: {db_product.id} is not found",
+            detail=f"Product with such ID: {db_product.id} is not found",
         )
     return db_product
 
@@ -107,7 +110,7 @@ async def update_product(
     return db_product
 
 
-@router.delete("/{product_id}", response_model=list[ProductModel])
+@router.delete("/{product_id}", response_model=ProductSchema)
 async def delete_product(product_id: int, session: AsyncSession = Depends(get_db)):
     """
     Удаляет товар по его ID.

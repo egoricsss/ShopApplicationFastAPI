@@ -15,12 +15,12 @@ class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(Integer, autoincrement=True, primary_key=True)
 
 
-_engine = create_async_engine(url=config.db_url.get_secret_value(), echo=True)
-_AsyncSessionLocal = async_sessionmaker(bind=_engine, expire_on_commit=False)
+engine = create_async_engine(url=config.db_url.get_secret_value(), echo=True)
+AsyncSessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with _AsyncSessionLocal() as session:
+    async with AsyncSessionLocal() as session:
         try:
             yield session
             await session.commit()
@@ -34,7 +34,7 @@ if __name__ == "__main__":
     async def main():
         print("--- Testing Engine ---")
         try:
-            async with _engine.begin() as conn:
+            async with engine.begin() as conn:
                 await conn.execute(text("SELECT 1"))
             print("✅ Connection success")
         except OperationalError:
@@ -43,7 +43,7 @@ if __name__ == "__main__":
             print(f"❌ Error: {e}")
 
         print("\n--- Testing Session ---")
-        async with _AsyncSessionLocal() as session:
+        async with AsyncSessionLocal() as session:
             try:
                 result = await session.execute(text("SELECT current_timestamp"))
                 print(f"🕒 DB Time: {result.scalar()}")
@@ -54,6 +54,6 @@ if __name__ == "__main__":
                 print(f"❌ Session test failed: {e}")
                 raise
 
-        await _engine.dispose()
+        await engine.dispose()
 
     asyncio.run(main())

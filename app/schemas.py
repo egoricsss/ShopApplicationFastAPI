@@ -86,7 +86,7 @@ class Product(BaseModel):
 
 
 class Config(BaseSettings):
-    db_url: SecretStr = Field(..., env="DB_URL")
+    db_url: SecretStr = Field(env="DB_URL", default="sqlite+aiosqlite:///ecommerce.db")
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
